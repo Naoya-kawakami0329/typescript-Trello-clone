@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 // import * as http from 'http';
 
 // const server = http.createServer((req,res)=>{
@@ -11,6 +12,8 @@
 // })
 
 import express from 'express'
+import { AppDataSource } from './datasorce.js';
+import { User } from './user.entity.js';
 
 const app=express();
 app.use(express.json())
@@ -22,22 +25,62 @@ app.get('/',(req,res)=>{
    res.sendFile(__dirname + '/public/index.html')
 })
 
-app.get("/users/:id",(req,res)=>{
-    res.send(`User id is ${req.params.id}.Name is ${req.query.name}`)
-})
-
 app.post('/',(req,res)=>{
 res.send(req.body);
 })
 
-app.put("/users/:id",(req,res)=>{
-    res.send(req.body)
+
+
+
+app.post("/users",async(req,res)=>{
+   const {name,email}= req.body;
+   const user=new User()
+   user.name=name;
+   user.email=email;
+    
+   const userRepository=AppDataSource.getRepository(User);
+   const newUser=await userRepository.save(user);
+   res.json(newUser);
 })
 
-app.delete("/users/:id",(req,res)=>{
-    res.send(req.params.id);
+app.get("/users",async(req,res)=>{
+    const userRepository=AppDataSource.getRepository(User);
+    const users=await userRepository.find();
+    res.json(users);
 })
+
+app.get("/users/:id",async(req,res)=>{
+    const {id}=req.params;
+    const userRepository=AppDataSource.getRepository(User)
+    const user=await userRepository.findOneBy({id:parseInt(id as string)});
+    res.json(user);
+})
+
+app.put('/users/:id',async(req,res)=>{
+    const {id}=req.params
+    const {name,email}=req.body;
+    const userRepository=AppDataSource.getRepository(User);
+    const existingUser=await userRepository.findOneBy({id :parseInt(id)})
+    existingUser!.name=name
+    existingUser!.email=email;
+    const updateUser=await userRepository.save(existingUser!)
+    res.json(updateUser);
+})
+
+app.delete("/users/:id",async(req,res)=>{
+    const {id}=req.params;
+    const userRepository=AppDataSource.getRepository(User);
+    await userRepository.delete(id)
+    res.json({success:true})
+
+})
+
 
 app.listen(PORT,()=>{
     console.log("サーバが起動しました")
 })
+
+AppDataSource.initialize().then(()=>{
+    console.log('データベースに接続しました')
+})
+.catch((error)=>console.log(error))
